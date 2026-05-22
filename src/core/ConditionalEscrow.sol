@@ -33,7 +33,7 @@ contract ConditionalEscrow is IConditionalEscrow {
 
         (bool success,) = escrow.payee.call{value: amount}("");
         if (!success) revert Errors.TransferFailed();
-        
+
         emit Released(escrowId, escrow.payee, amount);
     }
 
@@ -47,7 +47,7 @@ contract ConditionalEscrow is IConditionalEscrow {
 
         (bool success,) = escrow.payer.call{value: amount}("");
         if (!success) revert Errors.TransferFailed();
-        
+
         emit Refunded(escrowId, escrow.payer, amount);
     }
 }
