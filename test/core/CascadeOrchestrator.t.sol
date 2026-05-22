@@ -14,7 +14,7 @@ contract CascadeOrchestratorTest is Test {
 
     function test_Receive() public {
         vm.deal(address(this), 1 ether);
-        (bool success, ) = address(orchestrator).call{value: 1 ether}("");
+        (bool success,) = address(orchestrator).call{value: 1 ether}("");
         assertTrue(success);
         assertEq(address(orchestrator).balance, 1 ether);
     }

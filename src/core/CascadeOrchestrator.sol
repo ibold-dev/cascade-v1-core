@@ -9,7 +9,7 @@ contract CascadeOrchestrator is ICascadeOrchestrator {
 
     function executeBundle(Call[] calldata calls) external payable {
         for (uint256 i = 0; i < calls.length; i++) {
-            (bool success, ) = calls[i].target.call{value: calls[i].value}(calls[i].callData);
+            (bool success,) = calls[i].target.call{value: calls[i].value}(calls[i].callData);
             if (!success) {
                 revert Errors.CallFailed();
             }

@@ -27,11 +27,11 @@ contract ConditionalEscrow is IConditionalEscrow {
         Structs.EscrowDetails storage escrow = escrows[escrowId];
         if (msg.sender != escrow.attester) revert Errors.Unauthorized();
         if (escrow.state != Structs.EscrowState.Pending) revert Errors.EscrowNotActive();
-        
+
         escrow.state = Structs.EscrowState.Released;
         uint256 amount = escrow.amount;
-        
-        (bool success, ) = escrow.payee.call{value: amount}("");
+
+        (bool success,) = escrow.payee.call{value: amount}("");
         if (!success) revert Errors.TransferFailed();
         
         emit Released(escrowId, escrow.payee, amount);
@@ -41,11 +41,11 @@ contract ConditionalEscrow is IConditionalEscrow {
         Structs.EscrowDetails storage escrow = escrows[escrowId];
         if (escrow.state != Structs.EscrowState.Pending) revert Errors.EscrowNotActive();
         if (block.timestamp <= escrow.deadline) revert Errors.EscrowNotExpired();
-        
+
         escrow.state = Structs.EscrowState.Refunded;
         uint256 amount = escrow.amount;
-        
-        (bool success, ) = escrow.payer.call{value: amount}("");
+
+        (bool success,) = escrow.payer.call{value: amount}("");
         if (!success) revert Errors.TransferFailed();
         
         emit Refunded(escrowId, escrow.payer, amount);
