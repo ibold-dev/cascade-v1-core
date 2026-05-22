@@ -4,23 +4,43 @@ pragma solidity ^0.8.20;
 import {IConditionalEscrow} from "../interfaces/IConditionalEscrow.sol";
 import {Errors} from "../libraries/Errors.sol";
 import {Structs} from "../libraries/Structs.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ConditionalEscrow is IConditionalEscrow {
+    using SafeERC20 for IERC20;
+
     uint256 private _nextEscrowId;
     mapping(uint256 => Structs.EscrowDetails) public escrows;
 
-    function deposit(address payee, address attester, uint256 deadline) external payable returns (uint256 escrowId) {
-        if (msg.value == 0) revert Errors.InvalidAmount();
+    function deposit(address payee, address attester, address tokenAddress, uint256 amount, uint256 deadline)
+        external
+        payable
+        returns (uint256 escrowId)
+    {
+        uint256 actualAmount;
+        if (tokenAddress == address(0)) {
+            if (msg.value == 0) revert Errors.InvalidAmount();
+            actualAmount = msg.value;
+        } else {
+            if (amount == 0) revert Errors.InvalidAmount();
+            if (msg.value != 0) revert Errors.InvalidAmount();
+            actualAmount = amount;
+            IERC20(tokenAddress).safeTransferFrom(msg.sender, address(this), amount);
+        }
+
         escrowId = _nextEscrowId++;
         escrows[escrowId] = Structs.EscrowDetails({
             payer: msg.sender,
             payee: payee,
             attester: attester,
-            amount: msg.value,
+            tokenAddress: tokenAddress,
+            amount: actualAmount,
             deadline: deadline,
             state: Structs.EscrowState.Pending
         });
-        emit Deposited(msg.sender, payee, escrowId, msg.value);
+
+        emit Deposited(msg.sender, payee, escrowId, tokenAddress, actualAmount);
     }
 
     function release(uint256 escrowId) external {
@@ -30,11 +50,16 @@ contract ConditionalEscrow is IConditionalEscrow {
 
         escrow.state = Structs.EscrowState.Released;
         uint256 amount = escrow.amount;
+        address tokenAddress = escrow.tokenAddress;
 
-        (bool success,) = escrow.payee.call{value: amount}("");
-        if (!success) revert Errors.TransferFailed();
+        if (tokenAddress == address(0)) {
+            (bool success,) = escrow.payee.call{value: amount}("");
+            if (!success) revert Errors.TransferFailed();
+        } else {
+            IERC20(tokenAddress).safeTransfer(escrow.payee, amount);
+        }
 
-        emit Released(escrowId, escrow.payee, amount);
+        emit Released(escrowId, escrow.payee, tokenAddress, amount);
     }
 
     function refund(uint256 escrowId) external {
@@ -44,10 +69,15 @@ contract ConditionalEscrow is IConditionalEscrow {
 
         escrow.state = Structs.EscrowState.Refunded;
         uint256 amount = escrow.amount;
+        address tokenAddress = escrow.tokenAddress;
 
-        (bool success,) = escrow.payer.call{value: amount}("");
-        if (!success) revert Errors.TransferFailed();
+        if (tokenAddress == address(0)) {
+            (bool success,) = escrow.payer.call{value: amount}("");
+            if (!success) revert Errors.TransferFailed();
+        } else {
+            IERC20(tokenAddress).safeTransfer(escrow.payer, amount);
+        }
 
-        emit Refunded(escrowId, escrow.payer, amount);
+        emit Refunded(escrowId, escrow.payer, tokenAddress, amount);
     }
 }

@@ -14,6 +14,7 @@ library Structs {
         address payer;
         address payee;
         address attester;
+        address tokenAddress;
         uint256 amount;
         uint256 deadline;
         EscrowState state;
